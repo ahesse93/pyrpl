@@ -1,8 +1,8 @@
 /**
  * $Id: red_pitaya_top.v 1271 2014-02-25 12:32:34Z matej.oblak $
  *
- * @brief Red Pitaya TOP module. It connects external pins and PS part with 
- *        other application modules. 
+ * @brief Red Pitaya TOP module. It connects external pins and PS part with
+ *        other application modules.
  *
  * @Author Matej Oblak
  *
@@ -29,17 +29,17 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-############################################################################### 
+###############################################################################
 */
 
 
 /**
  * GENERAL DESCRIPTION:
  *
- * Top module connects PS part with rest of Red Pitaya applications.  
+ * Top module connects PS part with rest of Red Pitaya applications.
  *
  *
- *                   /-------\      
+ *                   /-------\
  *   PS DDR <------> |  PS   |      AXI <-> custom bus
  *   PS MIO <------> |   /   | <------------+
  *   PS CLK -------> |  ARM  |              |
@@ -56,14 +56,14 @@
  *            \--------/   ^   \-----/      |
  *                         |                |
  *                         |  /-------\     |
- *                         -- |  ASG  | <---+ 
+ *                         -- |  ASG  | <---+
  *                            \-------/     |
  *                                          |
  *             /--------\                   |
  *    RX ----> |        |                   |
  *   SATA      | DAISY  | <-----------------+
- *    TX <---- |        | 
- *             \--------/ 
+ *    TX <---- |        |
+ *             \--------/
  *               |    |
  *               |    |
  *               (FREE)
@@ -77,7 +77,7 @@
  *
  * Daisy chain connects with other boards with fast serial link. Data which is
  * send and received is at the moment undefined. This is left for the user.
- * 
+ *
  */
 
 module red_pitaya_top (
@@ -106,7 +106,7 @@ module red_pitaya_top (
    inout            DDR_we_n           ,
 
    // Red Pitaya periphery
-  
+
    // ADC
    input  [16-1: 2] adc_dat_a_i        ,  // ADC CH1
    input  [16-1: 2] adc_dat_b_i        ,  // ADC CH2
@@ -134,7 +134,7 @@ module red_pitaya_top (
    input  [ 2-1: 0] daisy_p_i          ,  // line 1 is clock capable
    input  [ 2-1: 0] daisy_n_i          ,
    // LED
-   output [ 8-1: 0] led_o       
+   output [ 8-1: 0] led_o
 );
 
 //---------------------------------------------------------------------------------
@@ -249,15 +249,15 @@ assign ps_sys_ack   = |(sys_cs & sys_ack);
 
 // unused system bus slave ports
 
-assign sys_rdata[5*32+:32] = 32'h0; 
+assign sys_rdata[5*32+:32] = 32'h0;
 assign sys_err  [5       ] =  1'b0;
 assign sys_ack  [5       ] =  1'b1;
 
-assign sys_rdata[6*32+:32] = 32'h0; 
+assign sys_rdata[6*32+:32] = 32'h0;
 assign sys_err  [6       ] =  1'b0;
 assign sys_ack  [6       ] =  1'b1;
 
-assign sys_rdata[7*32+:32] = 32'h0; 
+assign sys_rdata[7*32+:32] = 32'h0;
 assign sys_err  [7       ] =  1'b0;
 assign sys_ack  [7       ] =  1'b1;
 
@@ -331,7 +331,7 @@ BUFG bufg_dac_clk_2p (.O (dac_clk_2p), .I (pll_dac_clk_2p));
 BUFG bufg_ser_clk    (.O (ser_clk   ), .I (pll_ser_clk   ));
 BUFG bufg_pwm_clk    (.O (pwm_clk   ), .I (pll_pwm_clk   ));
 
-// ADC reset (active low) 
+// ADC reset (active low)
 always @(posedge adc_clk)
 adc_rstn <=  frstn[0] &  pll_locked;
 
@@ -362,7 +362,7 @@ begin
   adc_dat_a <= adc_dat_a_i[16-1:2];
   adc_dat_b <= adc_dat_b_i[16-1:2];
 end
-    
+
 // transform into 2's complement (negative slope)
 assign adc_a = digital_loop ? dac_a : {adc_dat_a[14-1], ~adc_dat_a[14-2:0]};
 assign adc_b = digital_loop ? dac_b : {adc_dat_b[14-1], ~adc_dat_b[14-2:0]};
@@ -471,6 +471,20 @@ red_pitaya_scope i_scope (
 //  DAC arbitrary signal generator
 wire    [14-1: 0] asg1phase_o;
 
+
+
+////////////////////////////////
+////////////////////////////////
+
+wire    [14-1: 0] phase_a_in;                        // frequency modulate
+wire    [14-1: 0] phase_b_in;                        // either ASG A, ASG B,
+wire    [14-1: 0] phase_both_in;                     // or both
+
+////////////////////////////////
+////////////////////////////////
+
+
+
 red_pitaya_asg i_asg (
    // DAC
   .dac_a_o         (  asg_a                      ),  // CH 1
@@ -482,7 +496,21 @@ red_pitaya_asg i_asg (
   .trig_out_o      (  trig_asg_out               ),
   .trig_scope_i    (  trig_scope_out             ),
   .asg1phase_o     (  asg1phase_o                ),
-  
+
+
+
+  ////////////////////////////////
+  ////////////////////////////////
+
+  .phase_a_in      (  phase_a_in                 ),  // connect the wires to the
+  .phase_b_in      (  phase_b_in                 ),  // ASG module, to allow it
+  .phase_both_in   (  phase_both_in              ),  // to be frequency modulated
+
+  ////////////////////////////////
+  ////////////////////////////////
+
+
+
   // System bus
   .sys_addr        (  sys_addr                   ),  // address
   .sys_wdata       (  sys_wdata                  ),  // write data
@@ -505,12 +533,28 @@ red_pitaya_dsp i_dsp (
   .dat_b_i         (  adc_b                      ),  // in 2
   .dat_a_o         (  dac_a                      ),  // out 1
   .dat_b_o         (  dac_b                      ),  // out 2
-  
+
   .asg1_i          (  asg_a                  ),
   .asg2_i          (  asg_b                  ),
   .scope1_o        (  to_scope_a             ),
   .scope2_o        (  to_scope_b             ),
   .asg1phase_i     (  asg1phase_o            ),
+
+
+
+  ////////////////////////////////
+  ////////////////////////////////
+
+  .iq0_sineout     ( phase_a_in              ),      // connect the outputs of
+  .iq1_sineout     ( phase_b_in              ),      // the IQ modules - IQ0 now
+  .iq2_sineout     ( phase_both_in           ),      // frequency modulates ASG
+                                                     // A, IQ1 ASG B and IQ2
+                                                     // modulates both ASGs
+
+  ////////////////////////////////
+  ////////////////////////////////
+
+
 
   .pwm0            (  pwm_signals[0]         ),
   .pwm1            (  pwm_signals[1]         ),
