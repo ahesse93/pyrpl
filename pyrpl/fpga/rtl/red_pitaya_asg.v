@@ -28,7 +28,7 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-############################################################################### 
+###############################################################################
 */
 
 /**
@@ -51,20 +51,20 @@
  *                   ˇ
  *                /-----\         /--------\
  *   SW --------> | BUF | ------> | kx + o | ---> DAC CHB
- *                \-----/         \--------/ 
+ *                \-----/         \--------/
  *
  *
  * Buffers are filed with SW. It also sets finite state machine which take control
- * over read pointer. All registers regarding reading from buffer has additional 
- * 16 bits used as decimal points. In this way we can make better ratio betwen 
- * clock cycle and frequency of output signal. 
+ * over read pointer. All registers regarding reading from buffer has additional
+ * 16 bits used as decimal points. In this way we can make better ratio betwen
+ * clock cycle and frequency of output signal.
  *
  * Finite state machine can be set for one time sequence or continously wrapping.
  * Starting trigger can come from outside, notification trigger used to synchronize
  * with other applications (scope) is also available. Both channels are independant.
  *
  * Output data is scaled with linear transmormation.
- * 
+ *
  */
 
 module red_pitaya_asg (
@@ -76,8 +76,22 @@ module red_pitaya_asg (
   input                 trig_a_i  ,  // starting trigger CHA
   input                 trig_b_i  ,  // starting trigger CHB
   output     [  2-1: 0] trig_out_o,  // notification trigger
- 
+
   input                 trig_scope_i    ,  // trigger from the scope
+
+
+
+  ////////////////////////////////
+  ////////////////////////////////
+
+  input      [14-1: 0] phase_a_in,            //  inputs for frequency
+  input      [14-1: 0] phase_b_in,            //  modulating ASG A, ASG B or
+  input      [14-1: 0] phase_both_in    ,     //  both ASGs
+
+  ////////////////////////////////
+  ////////////////////////////////
+
+
 
   output     [ 14-1: 0] asg1phase_o,
 
@@ -94,12 +108,47 @@ module red_pitaya_asg (
 
 //---------------------------------------------------------------------------------
 //
-// generating signal from DAC table 
+// generating signal from DAC table
 
 localparam RSZ = 14 ;  // RAM size 2^RSZ
 
+
+
+////////////////////////////////
+////////////////////////////////
+
+wire  [RSZ+15:0] phase_a_mod;
+wire  [RSZ+15:0] phase_b_mod;
+wire  [RSZ+15:0] phase_both_mod;
+
+localparam  moddepth = 5;
+
+assign phase_a_mod     = { {moddepth{phase_a_in[13]}}, phase_a_in[13:0], {RSZ+16-14-moddepth{1'b0}} };      //  pad the phases to
+assign phase_b_mod     = { {moddepth{phase_b_in[13]}}, phase_b_in[13:0], {RSZ+16-14-moddepth{1'b0}} };      //  be correctly
+assign phase_both_mod  = { {moddepth{phase_both_in[13]}}, phase_a_in[13:0], {RSZ+16-14-moddepth{1'b0}} };   //  signed
+
+////////////////////////////////
+////////////////////////////////
+
+
+
 reg   [RSZ+15: 0] set_a_size   , set_b_size   ;
 reg   [RSZ+15: 0] set_a_step   , set_b_step   ;
+
+
+
+////////////////////////////////
+////////////////////////////////
+
+reg   [RSZ+15: 0] set_a_step_mod, set_b_step_mod;   //  create registers for
+                                                    //  calculating the
+                                                    //  modulated phase step
+
+////////////////////////////////
+////////////////////////////////
+
+
+
 reg   [RSZ+15: 0] set_a_ofs    , set_b_ofs    ;
 reg               set_a_rst    , set_b_rst    ;
 reg               set_a_once   , set_b_once   ;
@@ -131,9 +180,9 @@ reg          at_autorearm_a;
 wire         at_trig_a;
 red_pitaya_adv_trigger adv_trig_a (
     .dac_clk_i (dac_clk_i) ,
-    .reset_i   (at_reset_a),  
+    .reset_i   (at_reset_a),
     .trig_i    (trig_a_i)  ,
-    .trig_o    (at_trig_a) ,    
+    .trig_o    (at_trig_a) ,
     .invert_i  (at_invert_a),
     .rearm_i   (at_autorearm_a),
     .hysteresis_i (at_counts_a)//stay on for hysteresis_i cycles
@@ -146,9 +195,9 @@ reg          at_autorearm_b;
 wire         at_trig_b;
 red_pitaya_adv_trigger adv_trig_b (
     .dac_clk_i (dac_clk_i) ,
-    .reset_i   (at_reset_b),  
+    .reset_i   (at_reset_b),
     .trig_i    (trig_b_i)  ,
-    .trig_o    (at_trig_b)   ,    
+    .trig_o    (at_trig_b)   ,
     .invert_i  (at_invert_b),
     .rearm_i   (at_autorearm_b),
     .hysteresis_i (at_counts_b)//stay on for hysteresis_i cycles
@@ -259,20 +308,49 @@ if (dac_rstn_i == 1'b0) begin
    set_b_rgate <=  1'b0    ;
    ren_dly     <=  3'h0    ;
    ack_dly     <=  1'b0    ;
-   
+
    at_counts_a <= {64{1'b0}};
-   at_reset_a <= 1'b1; 
+   at_reset_a <= 1'b1;
    at_invert_a <= 1'b0;
    at_autorearm_a <= 1'b0;
    at_counts_b <= {64{1'b0}};
-   at_reset_b <= 1'b1; 
+   at_reset_b <= 1'b1;
    at_invert_b <= 1'b0;
    at_autorearm_b <= 1'b0;
 
    rand_a_on <= 1'b0;
    rand_b_on <= 1'b0;
 
+
+
+   ////////////////////////////////
+   ////////////////////////////////
+
+   set_a_step_mod <={{RSZ+15{1'b0}},1'b0} ;     //  if resetted set both
+   set_b_step_mod <={{RSZ+15{1'b0}},1'b0} ;     //  modulated phase steps to
+                                                //  zero
+
+   ////////////////////////////////
+   ////////////////////////////////
+
+
+
 end else begin
+
+
+
+  ////////////////////////////////
+  ////////////////////////////////
+
+  //  modulate the frequency by adding the phase steps to the internal phase
+  set_a_step_mod <= $signed(set_a_step) + $signed(phase_a_mod) + $signed(phase_both_mod);
+  set_b_step_mod <= $signed(set_b_step) + $signed(phase_b_mod) + $signed(phase_both_mod);
+
+  ////////////////////////////////
+  ////////////////////////////////
+
+
+
    trig_a_sw  <= sys_wen && (sys_addr[19:0]==20'h0) && sys_wdata[0]  ;
    if (sys_wen && (sys_addr[19:0]==20'h0))
       trig_a_src <= sys_wdata[2:0] ;
