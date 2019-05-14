@@ -52,7 +52,7 @@ should not be used.
 
 
 module red_pitaya_dsp #(
-	parameter MODULES = 8
+	parameter MODULES = 10
 )
 (
    // signals
@@ -117,6 +117,20 @@ localparam IIR   = 'd4; //IIR filter to connect in series to PID module
 localparam IQ0   = 'd5; //for PDH signal generation
 localparam IQ1   = 'd6; //for NA functionality
 localparam IQ2   = 'd7; //for PFD error signal
+
+
+
+////////////////////////////////
+////////////////////////////////
+
+localparam SUM   = 'd8'; //sum of IQ0 and IQ1
+localparam DIF   = 'd9'; //difference of IQ0 and IQ1
+
+////////////////////////////////
+////////////////////////////////
+
+
+
 //localparam CUSTOM1 = 'd8; //available slots
 localparam NONE = 2**LOG_MODULES-1; //code for no module; only used to switch off PWM outputs
 
@@ -457,7 +471,7 @@ generate for (j = 7; j < 8; j = j+1) begin
          .dat_i        (  input_signal [j] ),  // input data
          .dat_o        (  output_direct[j]),  // output data
          .signal_o     (  output_signal[j]),  // output signal
-         .signal2_o    (  output_signal[j*2]),  // output signal 2
+         .signal2_o    (  output_signal[j*2+2]),  // output signal 2
 
          //communincation with PS
          .addr ( sys_addr[16-1:0] ),
@@ -474,50 +488,54 @@ end endgenerate
 ////////////////////////////////
 ////////////////////////////////
 
-// generate the signals IQ0 + IQ1 and IQ0 - IQ1
+generate for (j = 8; j < 9, j = j+1) begin
+			adder
+				adder
+				(
+					// data
+				  .clk_i        (  clk_i           ),  // clock
+				  .rstn_i       (  rstn_i          ),  // reset - active low
+				 	.in1          (  iq0_output      ),  // add the outputs of IQ0
+				  .in2          (  iq1_output      ),  // and IQ1
+				  .out          (  output_direct[j]),  // output data
 
-generate for (j = 8; j < 9; j = j+1) begin
-    adder
-      adder
-      (
-         // data
-         .clk_i        (  clk_i          ),  // clock
-         .rstn_i       (  rstn_i         ),  // reset - active low
-         .in_1         (  iq0_output     ),  // input data
-         .in_2         (  iq1_output     ),  // output data
-         .out          (  output_signal[j]),  // output signal
+				 	 // not using 2nd quadrature for most iq's: multipliers will be
+				 	 // synthesized away by Vivado
+				 	 //.signal2_o  (  output_signal[j*2]),  // output signal
 
-         //communincation with PS
-         .addr ( sys_addr[16-1:0] ),
-         .wen  ( sys_wen & (sys_addr[20-1:16]==j) ),
-         .ren  ( sys_ren & (sys_addr[20-1:16]==j) ),
-         .ack  ( module_ack[j] ),
-         .rdata (module_rdata[j]),
-         .wdata (sys_wdata)
-      );
+				 //communincation with PS
+				 .addr ( sys_addr[16-1:0] ),
+				 .wen  ( sys_wen & (sys_addr[20-1:16]==j) ),
+				 .ren  ( sys_ren & (sys_addr[20-1:16]==j) ),
+				 .ack  ( module_ack[j] ),
+				 .rdata (module_rdata[j]),
+				  .wdata (sys_wdata)
+				 );
 end endgenerate
 
+generate for (j = 9; j < 10, j = j+1) begin
+			subtractor
+				subtractor
+				(
+					// data
+				  .clk_i        (  clk_i           ),  // clock
+				  .rstn_i       (  rstn_i          ),  // reset - active low
+				 	.plus         (  iq0_output      ),  // add the outputs of IQ0
+				  .minus        (  iq1_output      ),  // and IQ1
+				  .out          (  output_direct[j]),  // output data
 
+				 	 // not using 2nd quadrature for most iq's: multipliers will be
+				 	 // synthesized away by Vivado
+				 	 //.signal2_o  (  output_signal[j*2]),  // output signal
 
-generate for (j = 9; j < 10; j = j+1) begin
-    subtractor
-      subtractor
-      (
-         // data
-         .clk_i        (  clk_i          ),  // clock
-         .rstn_i       (  rstn_i         ),  // reset - active low
-         .plus         (  iq0_output     ),  // input data
-         .minus        (  iq1_output     ),  // output data
-         .out          (  output_signal[j]),  // output signal
-
-         //communincation with PS
-         .addr ( sys_addr[16-1:0] ),
-         .wen  ( sys_wen & (sys_addr[20-1:16]==j) ),
-         .ren  ( sys_ren & (sys_addr[20-1:16]==j) ),
-         .ack  ( module_ack[j] ),
-         .rdata (module_rdata[j]),
-         .wdata (sys_wdata)
-      );
+				 //communincation with PS
+				 .addr ( sys_addr[16-1:0] ),
+				 .wen  ( sys_wen & (sys_addr[20-1:16]==j) ),
+				 .ren  ( sys_ren & (sys_addr[20-1:16]==j) ),
+				 .ack  ( module_ack[j] ),
+				 .rdata (module_rdata[j]),
+				  .wdata (sys_wdata)
+				 );
 end endgenerate
 
 ////////////////////////////////
