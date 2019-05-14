@@ -6,21 +6,23 @@ from ..errors import ExpectedPyrplError
 
 # order here determines the order in the GUI etc.
 DSP_INPUTS = OrderedDict([
-    ('in1', 10), #same as asg
-    ('in2', 11),
-    ('out1', 12),
-    ('out2', 13),
+    ('in1', 12), #same as asg
+    ('in2', 13),
+    ('out1', 14),
+    ('out2', 15),
     ('iq0', 5),
     ('iq1', 6),
     ('iq2', 7),
-    ('iq2_2', 14),
+    ('iq2_2', 16),
     ('pid0', 0),
     ('pid1', 1),
     ('pid2', 2),
-    ('asg0', 8),
-    ('asg1', 9),
+    ('asg0', 10),
+    ('asg1', 11),
     ('trig', 3),
     ('iir', 4),
+    ('iq0+iq1', 8),
+    ('iq0-iq1', 9)
     # ('scope0', 8), #same as asg0 by design
     # ('scope1', 9), #same as asg1 by design
     ('off', 15)])
