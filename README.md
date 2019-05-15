@@ -3,8 +3,8 @@
 IQ0 and IQ1's modulation signal also modulates the frequency of ASG0 / ASG1 - IQ2's output modulates both ASG's frequencies at the same time.  
   
 IQ2 will not give out a demodulated signal - instead it gives (IQ0 + IQ1) for "iq2" selected and (IQ0 - IQ1) for "iq2_2" selected. The functionality of IQ0 and IQ1 is not impacted (though the output of the ASGs will be different if running).  
-  
-  
+&nbsp;  
+&nbsp;  
   
 
 [<img src="http://pyrpl.readthedocs.io/en/latest/_static/logo.png" width="250" alt="PyRPL">](http://www.pyrpl.org/)
