@@ -254,6 +254,7 @@ always @(posedge dac_clk_i) begin
       trigbuf_rp_b <= buf_b_rpnt;
       end
 end
+set_a_step_mod
 
 
 always @(posedge dac_clk_i)
