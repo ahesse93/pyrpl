@@ -176,4 +176,3 @@ write_sysdef             -hwdef   $path_sdk/red_pitaya.hwdef \
                          -bitfile $path_out/red_pitaya.bit \
                          -file    $path_sdk/red_pitaya.sysdef
 
-exit
