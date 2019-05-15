@@ -1,10 +1,10 @@
-module subtractor
+module adder
 (
    // data
    input                 clk_i           ,  // clock
    input                 rstn_i          ,  // reset - active low
-   input signed     [ 14-1: 0] plus       ,  // input data
-   input signed     [ 14-1: 0] minus       ,  // input data
+   input signed     [ 14-1: 0] in1       ,  // input data
+   input signed     [ 14-1: 0] in2       ,  // input data
    output signed    [ 14-1: 0] out       ,  // module output
 
 
@@ -24,10 +24,10 @@ always @(posedge clk_i) begin
         tempout   <=    {14'b0};
     end
     else begin
-        tempout <= $signed(plus) - $signed(minus);
+        tempout <= $signed(in1) + $signed(in2);
     end
 end
 
-assign out = tempout[ 15-1: 1];
+assign out = tempot[ 15-1: 1];
 
-endmodule: subtractor
+endmodule: adder

@@ -28,4 +28,6 @@ always @(posedge clk_i) begin
     end
 end
 
-assign out = tempot[ 15-1: 1];
+assign out = tempout[ 15-1: 1];
+
+endmodule: adder
