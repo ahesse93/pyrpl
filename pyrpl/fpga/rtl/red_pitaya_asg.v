@@ -79,21 +79,18 @@ module red_pitaya_asg (
 
   input                 trig_scope_i    ,  // trigger from the scope
 
-
-
-  ////////////////////////////////
-  ////////////////////////////////
-
-  input      [14-1: 0] phase_a_in,            //  inputs for frequency
-  input      [14-1: 0] phase_b_in,            //  modulating ASG A, ASG B or
-  input      [14-1: 0] phase_both_in    ,     //  both ASGs
-
-  ////////////////////////////////
-  ////////////////////////////////
-
-
-
   output     [ 14-1: 0] asg1phase_o,
+
+
+  /////////////////////////////////
+  /////////////////////////////////
+
+  input      [ 14-1: 0] phase_a_in,
+  input      [ 14-1: 0] phase_b_in,
+  input      [ 14-1: 0] phase_both_in,
+
+  /////////////////////////////////
+  /////////////////////////////////
 
   // System bus
   input      [ 32-1: 0] sys_addr  ,  // bus address
@@ -113,22 +110,22 @@ module red_pitaya_asg (
 localparam RSZ = 14 ;  // RAM size 2^RSZ
 
 
-
-////////////////////////////////
-////////////////////////////////
+/////////////////////////////////
+/////////////////////////////////
 
 wire  [RSZ+15:0] phase_a_mod;
 wire  [RSZ+15:0] phase_b_mod;
 wire  [RSZ+15:0] phase_both_mod;
 
-localparam  moddepth = 5;
+localparam  moddepth = 4;
+localparam  moddepth_both = 4;
 
-assign phase_a_mod     = { {moddepth{phase_a_in[13]}}, phase_a_in[13:0], {RSZ+16-14-moddepth{1'b0}} };      //  pad the phases to
-assign phase_b_mod     = { {moddepth{phase_b_in[13]}}, phase_b_in[13:0], {RSZ+16-14-moddepth{1'b0}} };      //  be correctly
-assign phase_both_mod  = { {moddepth{phase_both_in[13]}}, phase_both_in[13:0], {RSZ+16-14-moddepth{1'b0}} };   //  signed
+assign phase_a_mod   = {{moddepth{phase_a_in[13]}}, phase_a_in[13:0], {RSZ+16-14-moddepth{1'b0}}};
+assign phase_b_mod   = {{moddepth{phase_b_in[13]}}, phase_b_in[13:0], {RSZ+16-14-moddepth{1'b0}}};
+assign phase_both_mod   = {{moddepth_both{phase_both_in[13]}}, phase_both_in[13:0], {RSZ+16-14-moddepth_both{1'b0}}};
 
-////////////////////////////////
-////////////////////////////////
+/////////////////////////////////
+/////////////////////////////////
 
 
 
@@ -136,17 +133,14 @@ reg   [RSZ+15: 0] set_a_size   , set_b_size   ;
 reg   [RSZ+15: 0] set_a_step   , set_b_step   ;
 
 
+/////////////////////////////////
+/////////////////////////////////
 
-////////////////////////////////
-////////////////////////////////
+reg   [RSZ+15: 0] set_a_step_mod;
+reg   [RSZ+15: 0] set_b_step_mod;
 
-reg   [RSZ+15: 0] set_a_step_mod, set_b_step_mod;   //  create registers for
-                                                    //  calculating the
-                                                    //  modulated phase step
-
-////////////////////////////////
-////////////////////////////////
-
+/////////////////////////////////
+/////////////////////////////////
 
 
 reg   [RSZ+15: 0] set_a_ofs    , set_b_ofs    ;
@@ -223,7 +217,17 @@ red_pitaya_asg_ch  #(.RSZ (RSZ)) ch [1:0] (
   .buf_rpnt_o      ({buf_b_rpnt       , buf_a_rpnt       }),  // buffer current read pointer
   // configuration
   .set_size_i      ({set_b_size       , set_a_size       }),  // set table data size
+
+
+  ////////////////////////////////
+  ////////////////////////////////
+
   .set_step_i      ({set_b_step_mod   , set_a_step_mod   }),  // set pointer step
+
+  ////////////////////////////////
+  ////////////////////////////////
+
+
   .set_ofs_i       ({set_b_ofs        , set_a_ofs        }),  // set reset offset
   .set_rst_i       ({set_b_rst        , set_a_rst        }),  // set FMS to reset
   .set_once_i      ({set_b_once       , set_a_once       }),  // set only once
@@ -254,6 +258,7 @@ always @(posedge dac_clk_i) begin
       trigbuf_rp_b <= buf_b_rpnt;
       end
 end
+
 
 
 always @(posedge dac_clk_i)
@@ -321,33 +326,27 @@ if (dac_rstn_i == 1'b0) begin
    rand_b_on <= 1'b0;
 
 
+   /////////////////////////////////
+   /////////////////////////////////
 
-   ////////////////////////////////
-   ////////////////////////////////
+   set_a_step_mod <= {{RSZ+15{1'b0}}, 1'b0};
+   set_b_step_mod <= {{RSZ+15{1'b0}}, 1'b0};
 
-   set_a_step_mod <={{RSZ+15{1'b0}},1'b0} ;     //  if resetted set both
-   set_b_step_mod <={{RSZ+15{1'b0}},1'b0} ;     //  modulated phase steps to
-                                                //  zero
-
-   ////////////////////////////////
-   ////////////////////////////////
-
+   /////////////////////////////////
+   /////////////////////////////////
 
 
 end else begin
 
 
+  /////////////////////////////////
+  /////////////////////////////////
 
-  ////////////////////////////////
-  ////////////////////////////////
-
-  //  modulate the frequency by adding the phase steps to the internal phase
   set_a_step_mod <= $signed(set_a_step) + $signed(phase_a_mod) + $signed(phase_both_mod);
   set_b_step_mod <= $signed(set_b_step) + $signed(phase_b_mod) + $signed(phase_both_mod);
 
-  ////////////////////////////////
-  ////////////////////////////////
-
+  /////////////////////////////////
+  /////////////////////////////////
 
 
    trig_a_sw  <= sys_wen && (sys_addr[19:0]==20'h0) && sys_wdata[0]  ;
